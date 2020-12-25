@@ -1,1 +1,1 @@
-print 'This is a test py'
+print ('This is a test py')
