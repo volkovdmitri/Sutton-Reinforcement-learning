@@ -1,57 +1,130 @@
-import numpy as np
-
 class Board:
 
     def __init__(self):
-        self.cells = np.zeros((3, 3)) 
-    
-
-    def num_to_pic(self, x):
-        if x == 1:
-            return 'x'
-        elif x == -1:
-            return 'o'
-        else: 
-            return ' '
+        
+        self.field = ['-']*9
+        self.game_is_going = True
+        self.is_tie = False    
 
     def draw(self):
-        print('- - -')
-        print(self.num_to_pic(self.cells[0, 0]), self.num_to_pic(self.cells[0, 1]), \
-                                                self.num_to_pic(self.cells[0, 2]))
         
-        print('- - -')
-
-        print(self.num_to_pic(self.cells[1, 0]), self.num_to_pic(self.cells[1, 1]), \
-                                                self.num_to_pic(self.cells[1, 2]))
-        print('- - -')
-
-        print(self.num_to_pic(self.cells[2, 0]), self.num_to_pic(self.cells[2, 1]), \
-                                                self.num_to_pic(self.cells[2, 2]))
-        print('- - -')
-
-
-class Move():
+        print(self.field[0]+' | '+self.field[1]+' | '+self.field[2])
+        print('---------')
+        print(self.field[3]+' | '+self.field[4]+' | '+self.field[5])
+        print('---------')
+        print(self.field[6]+' | '+self.field[7]+' | '+self.field[8])
     
-    def __init__(self, board):
-        self.board = board
 
-    def get_move(self):
-        print('Enter row:')
-        self.row_num = input()
-        print('Enter column:')
-        self.col_num = input()
-   
+    def row_end(self):
+
+        if self.field[0]==self.field[1]==self.field[2]!='-':
+            self.game_is_going = False
+        
+        if self.field[3]==self.field[4]==self.field[5]!='-':
+            self.game_is_going = False
+            
+        if self.field[6]==self.field[7]==self.field[8]!='-':
+            self.game_is_going = False
+
+    
+    def col_end(self):
+
+        if self.field[0]==self.field[3]==self.field[6]!='-':
+            self.game_is_going = False
+        
+        if self.field[1]==self.field[4]==self.field[7]!='-':
+            self.game_is_going = False
+            
+        if self.field[2]==self.field[5]==self.field[8]!='-':
+            self.game_is_going = False
+
+    
+    def diag_end(self):
+
+        if self.field[0]==self.field[4]==self.field[8]!='-':
+            self.game_is_going = False
+        
+        if self.field[2]==self.field[4]==self.field[6]!='-':
+            self.game_is_going = False
+
+    
+    def tie(self):
+        
+        if '-' not in self.field:
+            self.game_is_going = False
+            self.is_tie = True
+
+    def is_end(self):
+        self.row_end()
+        self.col_end()
+        self.diag_end()
+        self.tie()
+
+
+class Player:
+    
+    def __init__(self):
+        self.score = 0
+
+
     def make_move(self):
-        self.board.cells[int(self.row_num), int(self.col_num)] = 1
+        self.mv = input('Make a move:')
+        try: 
+            self.mv = int(self.mv) - 1
+        except ValueError:
+            print('Wrong move')
+            self.make_move()
+        if self.mv not in range(9):
+            print('Wrong move!')
+            self.make_move()
 
-def main():
-    board = Board()
-    move = Move(board)
-    move.get_move()
-    move.make_move()
-    board.draw()
+
+class Game:
+    
+    def __init__(self, board, player, turn):
+
+        self.board = board
+        self.player = player
+        self.turn = turn
+
+
+    def play(self):
+
+        self.board.draw()
+        self.player.make_move()
+
+        if self.board.field[self.player.mv] == '-':
+            self.board.field[self.player.mv] = self.turn
+            self.board.is_end()
+            if self.turn == 'X':
+                self.turn = 'O'
+            else:
+                self.turn = 'X'
+        else:
+            print('The cell is already occupied!')
+            self.play()
+
+
 
 
 if __name__ == '__main__':
-    main()
+    board = Board()
+    player = Player()
+    game = Game(board, player, 'X')
+
+    while board.game_is_going:
+        game.play()
+    board.draw()
+    print('The game is over!')
+    if board.is_tie:
+        print('Tie')
+    elif game.turn == 'X':
+        print('Player O has won')
+    else:
+        print('Player X has won')
+
+
+
+
+
 
