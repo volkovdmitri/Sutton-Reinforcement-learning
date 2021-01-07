@@ -60,6 +60,7 @@ class Blackjack_game():
         # log of states during an episode
         self.player_score_list = []
         self.player_usable_ace_list = []
+        self.player_actions_list = []
 
         # policy shape - (10 - score of player's hand, 10 - first dealer's card, 2 - is ace usable) 
         # 1 - hits, 0 - sticks
@@ -73,7 +74,7 @@ class Blackjack_game():
 
         while not self.player.is_bust:
             
-            # save logs
+            # save states logs
             self.player_score_list.append(self.player_score)
             self.player_usable_ace_list.append(int(self.player.usable_ace()))
 
@@ -84,6 +85,9 @@ class Blackjack_game():
                 action = self.player_policy[self.player_score-12, self.dealer_first_card-1, 
                                             int(self.player.usable_ace())]
             
+            # save actions logs
+            self.player_actions_list.append(int(action))
+
             # act according to the policy 
             if action == 1:
                 self.player.draw_card()
@@ -123,15 +127,9 @@ class Blackjack_game():
         self.dealer_turn()
 
 
-# the policy that sticks if the player’s sum is 20 or 21, and otherwise hits
-policy = np.zeros((10, 10, 2)) + 1
-policy[8:10, :, :] = 0
+# Value of states
+def monte_carlo_values(policy, V, runs):
 
-
-def monte_carlo(policy, runs):
-
-    # initial values
-    V = np.zeros((10, 10, 2))
     N = np.zeros((10, 10, 2))
     
     for _ in tqdm.tqdm(range(runs)):
@@ -152,17 +150,57 @@ def monte_carlo(policy, runs):
 
     return V
 
-V = monte_carlo(policy, 500000)
+
+# Optimal policy
+def monte_carlo_policy(policy, Q, runs):
+
+    N = np.zeros((10, 10, 2, 2))
+    
+    for _ in tqdm.tqdm(range(runs)):
+        game = Blackjack_game(policy)
+        game.play()
+        reward = game.results()
+        
+        state_action_log = []
+        for i in range(len(game.player_score_list)):
+            state = (game.player_score_list[i], game.dealer_first_card, 
+                     game.player_usable_ace_list[i], game.player_actions_list[i])   
+            # update value of state-action pair and policy
+            if state[0] >= 12 and state not in state_action_log:
+                N[state[0]-12, state[1]-1, state[2], state[3]] += 1 
+                Q[state[0]-12, state[1]-1, state[2], state[3]] += 1/N[state[0]-12, state[1]-1, state[2], state[3]]*\
+                                                       (reward - Q[state[0]-12, state[1]-1, state[2], state[3]])
+                # policy update
+                policy[state[0]-12, state[1]-1, state[2]] = np.argmax(Q[state[0]-12, state[1]-1, state[2], :])
+                state_action_log.append(state)
+    
+    return Q, policy
+
+
+
 
 # Plot
-fig = plt.figure()
-ax = fig.gca(projection='3d')
+def plot3d(Z):
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
 
-X = np.arange(1, 11)
-Y = np.arange(12, 22)
-X, Y = np.meshgrid(X, Y)
+    X = np.arange(1, 11)
+    Y = np.arange(12, 22)
+    X, Y = np.meshgrid(X, Y)
 
-surf = ax.plot_surface(X, Y, V[:,:,0])
-plt.show()
+    surf = ax.plot_surface(X, Y, Z)
+    plt.show()
+
+
+
+# the policy that sticks if the player’s sum is 20 or 21, and otherwise hits
+policy = np.zeros((10, 10, 2)) + 1
+policy[8:10, :, :] = 0
+#V = monte_carlo_values(policy, np.zeros((10, 10, 2)), 10000)
+Q, new_policy = monte_carlo_policy(policy, np.zeros((10, 10, 2, 2)), 500000)
+
+
+#plot3d(V[:,:,0])
+plot3d(new_policy[:,:,0])
 
 
